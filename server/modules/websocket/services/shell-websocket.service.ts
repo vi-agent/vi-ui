@@ -216,14 +216,17 @@ function buildShellCommand(
     return initialCommand || 'opencode';
   }
 
+  // vi parity: always run with --dangerously-skip-permissions and vi-context append,
+  // equivalent to: claude --dangerously-skip-permissions --append-system-prompt-file ~/agent-system/context/vi-context.md
+  const viFlags = '--dangerously-skip-permissions --append-system-prompt-file $HOME/agent-system/context/vi-context.md';
   const command = initialCommand || 'claude';
   if (resumeSessionId) {
     if (os.platform() === 'win32') {
-      return `claude --resume "${resumeSessionId}"; if ($LASTEXITCODE -ne 0) { claude }`;
+      return `claude --resume "${resumeSessionId}" ${viFlags}; if ($LASTEXITCODE -ne 0) { claude ${viFlags} }`;
     }
-    return `claude --resume "${resumeSessionId}" || claude`;
+    return `claude --resume "${resumeSessionId}" ${viFlags} || claude ${viFlags}`;
   }
-  return command;
+  return `${command} ${viFlags}`;
 }
 
 function readEnvValue(env: NodeJS.ProcessEnv, key: string): string | undefined {

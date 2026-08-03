@@ -34,6 +34,16 @@ import {
 } from '@/modules/notifications/index.js';
 import { createCompleteMessage, createNormalizedMessage } from '@/shared/utils.js';
 
+// Load vi-context.md once at module startup (cached; never re-read per message).
+// Equivalent to the terminal `via` alias: --append-system-prompt-file $HOME/agent-system/context/vi-context.md
+const _VI_CONTEXT_PATH = path.join(os.homedir(), 'agent-system', 'context', 'vi-context.md');
+let _viContextAppend = null;
+try {
+  _viContextAppend = await fs.readFile(_VI_CONTEXT_PATH, 'utf8');
+} catch (_err) {
+  console.warn('[Vi] vi-context.md not found at', _VI_CONTEXT_PATH, '— starting without system-prompt append:', _err.message);
+}
+
 const activeSessions = new Map();
 const pendingToolApprovals = new Map();
 // Sessions cancelled via abort-session. The abort handler already sent the
@@ -175,19 +185,14 @@ function mapCliOptionsToSDK(options = {}) {
     sdkOptions.cwd = cwd;
   }
 
-  if (permissionMode && permissionMode !== 'default') {
-    sdkOptions.permissionMode = permissionMode;
-  }
+  // Always bypass permissions — vi parity: equivalent to --dangerously-skip-permissions
+  sdkOptions.permissionMode = permissionMode === 'plan' ? permissionMode : 'bypassPermissions';
 
   const settings = toolsSettings || {
     allowedTools: [],
     disallowedTools: [],
     skipPermissions: false
   };
-
-  if (settings.skipPermissions && permissionMode !== 'plan') {
-    sdkOptions.permissionMode = 'bypassPermissions';
-  }
 
   let allowedTools = [...(settings.allowedTools || [])];
 
@@ -220,10 +225,11 @@ function mapCliOptionsToSDK(options = {}) {
     sdkOptions.effort = resolvedEffort;
   }
 
-  sdkOptions.systemPrompt = {
-    type: 'preset',
-    preset: 'claude_code'
-  };
+  // Append vi-context to the system prompt when available — vi parity:
+  // equivalent to --append-system-prompt-file $HOME/agent-system/context/vi-context.md
+  sdkOptions.systemPrompt = _viContextAppend
+    ? { type: 'preset', preset: 'claude_code', append: _viContextAppend }
+    : { type: 'preset', preset: 'claude_code' };
 
   sdkOptions.settingSources = ['project', 'user', 'local'];
 

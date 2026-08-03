@@ -82,6 +82,57 @@ test('a stale socket close cannot detach the socket that replaced it', () => {
   pty.emitExit();
 });
 
+// Helper to capture the shell command string passed to spawnPty
+function captureShellCommand(
+  message: Record<string, unknown>,
+  resolveProviderSessionId: (sessionId: string, provider: string) => string | null = () => null
+): string {
+  const pty = createFakePty();
+  let capturedArgs: string[] = [];
+  const dependencies = {
+    resolveProviderSessionId,
+    spawnPty: (_shell: string, args: string | string[]) => {
+      capturedArgs = Array.isArray(args) ? args : [args];
+      return pty as never;
+    },
+  };
+  const socket = createFakeSocket();
+  handleShellConnection(socket as never, dependencies);
+  socket.emit('message', JSON.stringify({ type: 'init', projectPath: process.cwd(), ...message }));
+  pty.emitExit();
+  // On non-Windows, shell args are ['-c', '<command>']
+  return capturedArgs[1] ?? '';
+}
+
+test('buildShellCommand — claude fresh session includes vi flags', () => {
+  const cmd = captureShellCommand({
+    sessionId: `vi-fresh-${Date.now()}`,
+    hasSession: false,
+    provider: 'claude',
+  });
+  assert.match(cmd, /--dangerously-skip-permissions/);
+  assert.match(cmd, /--append-system-prompt-file \$HOME\/agent-system\/context\/vi-context\.md/);
+  // Must NOT start a resume session
+  assert.doesNotMatch(cmd, /--resume/);
+});
+
+test('buildShellCommand — claude resume session includes vi flags on both branches', () => {
+  const resumeId = `resume-session-${Date.now()}`;
+  const cmd = captureShellCommand(
+    {
+      sessionId: `vi-resume-${Date.now()}`,
+      hasSession: true,
+      provider: 'claude',
+    },
+    () => resumeId
+  );
+  // The resume invocation must carry the flags
+  assert.match(cmd, new RegExp(`--resume "${resumeId}".*--dangerously-skip-permissions`));
+  // The fallback invocation (after ||) must also carry the flags
+  assert.match(cmd, /\|\|.*claude.*--dangerously-skip-permissions/);
+  assert.match(cmd, /--append-system-prompt-file \$HOME\/agent-system\/context\/vi-context\.md/);
+});
+
 test('shell output detects and normalizes a wrapped authentication URL', () => {
   const pty = createFakePty();
   const socket = createFakeSocket();
