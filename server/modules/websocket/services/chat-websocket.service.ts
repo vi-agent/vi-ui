@@ -357,6 +357,102 @@ function handlePermissionResponse(data: AnyRecord, dependencies: ChatWebSocketDe
 }
 
 /**
+/**
+ * Handles `chat.compact`: runs the Claude SDK `/compact` command for the
+ * session, which compresses the conversation history to free up context space.
+ *
+ * - If the session has no provider_session_id (no conversation on disk), sends
+ *   `compact_done` immediately with `emptyHistory: true`.
+ * - Otherwise starts a provider run with the `/compact` command and emits
+ *   `compact_start` → `compact_done` (or `compact_error`) around it.
+ */
+async function handleChatCompact(
+  ws: WebSocket,
+  userId: string | number | null,
+  data: AnyRecord,
+  dependencies: ChatWebSocketDependencies
+): Promise<void> {
+  const sessionId = readRequiredSessionId(data);
+  if (!sessionId) {
+    sendProtocolError(ws, 'SESSION_ID_REQUIRED', 'chat.compact requires a sessionId.');
+    return;
+  }
+
+  const session = sessionsDb.getSessionById(sessionId);
+  if (!session) {
+    sendProtocolError(ws, 'SESSION_NOT_FOUND', `Session "${sessionId}" was not found.`, sessionId);
+    return;
+  }
+
+  // Compaction requires an existing conversation on disk.
+  if (!session.provider_session_id) {
+    sendJson(ws, {
+      kind: 'compact_done',
+      sessionId,
+      emptyHistory: true,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (chatRunRegistry.isProcessing(sessionId)) {
+    sendProtocolError(ws, 'RUN_IN_PROGRESS', `Session "${sessionId}" already has a run in progress.`, sessionId);
+    return;
+  }
+
+  const provider = session.provider as LLMProvider;
+  if (!dependencies.runtime.hasRuntime(provider)) {
+    sendProtocolError(ws, 'UNSUPPORTED_PROVIDER', `Provider "${provider}" is not available.`, sessionId);
+    return;
+  }
+
+  const run = chatRunRegistry.startRun({
+    appSessionId: sessionId,
+    provider,
+    providerSessionId: session.provider_session_id,
+    connection: ws,
+    userId,
+  });
+
+  if (!run) {
+    sendProtocolError(ws, 'RUN_IN_PROGRESS', `Session "${sessionId}" already has a run in progress.`, sessionId);
+    return;
+  }
+
+  // Signal compact start to the client.
+  sendJson(ws, {
+    kind: 'compact_start',
+    sessionId,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    await dependencies.runtime.run(provider, '/compact', {
+      sessionId,
+      cwd: session.project_path ?? undefined,
+      projectPath: session.project_path,
+      isCompact: true,
+    }, run.writer);
+
+    sendJson(ws, {
+      kind: 'compact_done',
+      sessionId,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    sendJson(ws, {
+      kind: 'compact_error',
+      sessionId,
+      error: message,
+      timestamp: new Date().toISOString(),
+    });
+  } finally {
+    chatRunRegistry.completeRunIfCurrent(run, { exitCode: 0 });
+  }
+}
+
+/**
  * Handles authenticated chat websocket messages used by the main chat panel.
  *
  * Inbound protocol (client to server):
@@ -364,11 +460,12 @@ function handlePermissionResponse(data: AnyRecord, dependencies: ChatWebSocketDe
  * - `chat.abort`               { sessionId }
  * - `chat.subscribe`           { sessions: [{ sessionId, lastSeq? }] }
  * - `chat.permission-response` { requestId, allow, updatedInput?, message?, rememberEntry? }
+ * - `chat.compact`             { sessionId }
  *
  * Outbound protocol (server to client): every frame is `kind`-based — either
  * a provider `NormalizedMessage` (with `seq`) or a gateway event
  * (`chat_subscribed`, `session_upserted`, `loading_progress`,
- * `protocol_error`).
+ * `protocol_error`, `compact_start`, `compact_done`, `compact_error`).
  */
 export function handleChatConnection(
   ws: WebSocket,
@@ -402,6 +499,9 @@ export function handleChatConnection(
           return;
         case 'chat.permission-response':
           handlePermissionResponse(data, dependencies);
+          return;
+        case 'chat.compact':
+          await handleChatCompact(ws, userId, data, dependencies);
           return;
         default:
           sendProtocolError(ws, 'UNKNOWN_MESSAGE_TYPE', `Unknown message type "${messageType}".`);

@@ -38,6 +38,8 @@ import TokenUsageSummary from './TokenUsageSummary';
 import QueuedMessageCard from './QueuedMessageCard';
 import ComposerModelMenu from './ComposerModelMenu';
 import ComposerPermissionMenu from './ComposerPermissionMenu';
+import CompactionStatusBanner from './CompactionStatusBanner';
+import type { UseCompactionStateReturn } from '../../hooks/useCompactionState';
 
 interface MentionableFile {
   name: string;
@@ -119,6 +121,8 @@ interface ChatComposerProps {
   placeholder: string;
   isTextareaExpanded: boolean;
   sendByCtrlEnter?: boolean;
+  compactionState?: UseCompactionStateReturn;
+  onCancelCompactionQueue?: () => void;
 }
 
 export default function ChatComposer({
@@ -183,6 +187,8 @@ export default function ChatComposer({
   placeholder,
   isTextareaExpanded,
   sendByCtrlEnter,
+  compactionState,
+  onCancelCompactionQueue,
 }: ChatComposerProps) {
   const { t } = useTranslation('chat');
   const commandMenuPosition = useMemo(() => {
@@ -310,6 +316,15 @@ export default function ChatComposer({
           isOpen={isCommandMenuOpen}
           frequentCommands={frequentCommands}
         />
+
+        {compactionState && compactionState.phase !== 'idle' && (
+          <CompactionStatusBanner
+            phase={compactionState.phase}
+            compactionQueue={compactionState.compactionQueue}
+            compactionError={compactionState.compactionError}
+            onCancelQueue={onCancelCompactionQueue ?? (() => {})}
+          />
+        )}
 
         <PromptInput
           onSubmit={onSubmit as (event: FormEvent<HTMLFormElement>) => void}

@@ -81,6 +81,21 @@ export default function KeyboardShortcutsModal({ open, onClose }: KeyboardShortc
               </li>
             ))}
           </ul>
+
+          {/* Slash commands section */}
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Slash commands
+            </p>
+            <ul className="space-y-2">
+              <li className="flex items-center justify-between gap-4 rounded-lg py-2">
+                <span className="text-sm text-foreground">Compress conversation history to free context</span>
+                <kbd className="shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+                  /compact
+                </kbd>
+              </li>
+            </ul>
+          </div>
         </div>
 
         {/* Footer hint */}

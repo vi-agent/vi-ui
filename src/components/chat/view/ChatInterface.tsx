@@ -194,6 +194,9 @@ function ChatInterface({
     commandModalPayload,
     closeCommandModal,
     showCostModal,
+    compactionState,
+    completeCompaction,
+    cancelCompactionQueue,
   } = useChatComposerState({
     selectedProject,
     selectedSession,
@@ -255,6 +258,50 @@ function ChatInterface({
     onWebSocketReconnect: handleWebSocketReconnect,
     sessionStore,
   });
+
+  // Subscribe to compact lifecycle events from the server.
+  useEffect(() => {
+    const { dequeueMessage } = compactionState;
+    return subscribe((msg) => {
+      const activeSid = selectedSession?.id || currentSessionId;
+      if (!activeSid || msg.sessionId !== activeSid) {
+        return;
+      }
+
+      if (msg.kind === 'compact_done') {
+        completeCompaction(true);
+        // Add a system message to show the compaction in the transcript.
+        addMessage({
+          type: 'system' as const,
+          content: (msg as { emptyHistory?: boolean }).emptyHistory
+            ? 'Context compaction skipped — no conversation history yet.'
+            : 'Context compacted.',
+          timestamp: new Date(),
+        });
+        // Drain the compaction queue.
+        let item = dequeueMessage();
+        while (item) {
+          sendMessage({
+            type: 'chat.send',
+            sessionId: activeSid,
+            content: item.content,
+            options: {},
+          });
+          item = dequeueMessage();
+        }
+      } else if (msg.kind === 'compact_error') {
+        completeCompaction(false, String((msg as { error?: unknown }).error ?? 'Compaction failed'));
+      }
+    });
+  }, [
+    subscribe,
+    compactionState,
+    completeCompaction,
+    selectedSession?.id,
+    currentSessionId,
+    addMessage,
+    sendMessage,
+  ]);
 
   useEffect(() => {
     if (!canAbortSession) {
@@ -458,6 +505,8 @@ function ChatInterface({
           placeholder={t('input.placeholder', { provider: selectedProviderLabel })}
           isTextareaExpanded={isTextareaExpanded}
           sendByCtrlEnter={sendByCtrlEnter}
+          compactionState={compactionState}
+          onCancelCompactionQueue={cancelCompactionQueue}
         />
         </div>
       </div>

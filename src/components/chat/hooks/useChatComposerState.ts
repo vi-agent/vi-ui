@@ -33,6 +33,8 @@ import { escapeRegExp } from '../utils/chatFormatting';
 
 import { useFileMentions } from './useFileMentions';
 import { type SlashCommand, useSlashCommands } from './useSlashCommands';
+import { isCompactCommand, useCompactionState } from './useCompactionState';
+import type { UseCompactionStateReturn } from './useCompactionState';
 
 interface UseChatComposerStateArgs {
   selectedProject: Project | null;
@@ -519,6 +521,17 @@ export function useChatComposerState({
     onExecuteCommand: executeCommand,
   });
 
+  const compactionState = useCompactionState();
+  const {
+    phase: compactionPhase,
+    isCompacting,
+    isPendingCompact,
+    enqueueMessage: enqueueCompactionMessage,
+    setPhase: setCompactionPhase,
+    completeCompaction,
+    cancelQueue: cancelCompactionQueue,
+  } = compactionState;
+
   const {
     showFileDropdown,
     filteredFiles,
@@ -687,6 +700,53 @@ export function useChatComposerState({
         )
         || !selectedProject
       ) {
+        return;
+      }
+
+      // Handle /compact slash command.
+      if (!queuedSubmission && isCompactCommand(currentInput.trim())) {
+        const targetId = selectedSession?.id || currentSessionId || null;
+        if (!targetId) {
+          addMessage({
+            type: 'system' as ChatMessage['type'],
+            content: 'Nothing to compact — no active session.',
+            timestamp: new Date(),
+          });
+          return;
+        }
+        // Already in one of these states — ignore duplicate.
+        if (compactionPhase === 'compacting' || compactionPhase === 'pending_stream') {
+          return;
+        }
+        setInput('');
+        inputValueRef.current = '';
+        resetCommandMenuState();
+        setIsTextareaExpanded(false);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+        if (isLoading) {
+          setCompactionPhase('pending_stream');
+        } else {
+          setCompactionPhase('compacting');
+          sendMessage({ type: 'chat.compact', sessionId: targetId });
+        }
+        return;
+      }
+
+      // While compaction is active or pending, queue new messages.
+      if (!queuedSubmission && (isCompacting || isPendingCompact)) {
+        enqueueCompactionMessage({ content: currentInput });
+        setInput('');
+        inputValueRef.current = '';
+        setAttachedFiles([]);
+        setUploadingFiles(new Map());
+        setFileErrors(new Map());
+        resetCommandMenuState();
+        setIsTextareaExpanded(false);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
         return;
       }
 
@@ -929,18 +989,24 @@ export function useChatComposerState({
       selectedSession,
       attachedFiles,
       buildSendOptions,
+      compactionPhase,
       currentSessionId,
+      enqueueCompactionMessage,
       executeCommand,
+      isCompacting,
       isLoading,
+      isPendingCompact,
       onSessionProcessing,
       onSessionEstablished,
       provider,
       resetCommandMenuState,
       scrollToBottom,
       selectedProject,
+      selectedSession,
       sendMessage,
       sessionKey,
       addMessage,
+      setCompactionPhase,
       setIsUserScrolledUp,
       slashCommands,
     ],
@@ -993,6 +1059,27 @@ export function useChatComposerState({
     }, delay);
     return () => clearTimeout(timer);
   }, [isLoading, queuedDraft, sessionKey, setInput]);
+
+  // When a pending_stream compact was queued while a response streamed, fire
+  // the compact once the stream ends.
+  const compactionPhaseRef = useRef(compactionPhase);
+  compactionPhaseRef.current = compactionPhase;
+  useEffect(() => {
+    const wasLoading = wasLoadingRef.current;
+    if (!wasLoading || isLoading) {
+      return;
+    }
+    if (compactionPhaseRef.current !== 'pending_stream') {
+      return;
+    }
+    const targetId = selectedSession?.id || currentSessionId || null;
+    if (!targetId) {
+      return;
+    }
+    setCompactionPhase('compacting');
+    sendMessage({ type: 'chat.compact', sessionId: targetId });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
 
   const editQueuedDraft = useCallback(() => {
     if (!queuedDraft) {
@@ -1308,5 +1395,9 @@ export function useChatComposerState({
     commandModalPayload,
     closeCommandModal,
     showCostModal,
+    // Compaction state
+    compactionState,
+    completeCompaction,
+    cancelCompactionQueue,
   };
 }
