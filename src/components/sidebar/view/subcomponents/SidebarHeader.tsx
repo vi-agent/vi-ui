@@ -1,4 +1,4 @@
-import { Activity, Archive, Folder, FolderPlus, MessageSquare, Plus, RefreshCw, Search, X, PanelLeftClose } from 'lucide-react';
+import { Activity, Archive, Folder, FolderPlus, Keyboard, MessageSquare, Plus, RefreshCw, Search, X, PanelLeftClose } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { Button, Input, Tooltip } from '../../../../shared/view/ui';
@@ -29,6 +29,7 @@ type SidebarHeaderProps = {
   isRefreshing: boolean;
   onCreateProject: () => void;
   onCollapseSidebar: () => void;
+  onOpenShortcutsModal?: () => void;
   t: TFunction;
 };
 
@@ -49,6 +50,7 @@ export default function SidebarHeader({
   isRefreshing,
   onCreateProject,
   onCollapseSidebar,
+  onOpenShortcutsModal,
   t,
 }: SidebarHeaderProps) {
   const showSearchTools = (projectsCount > 0 || runningSessionsCount > 0 || archivedSessionsCount > 0 || isArchivedSessionsLoading) && !isLoading;
@@ -111,6 +113,16 @@ export default function SidebarHeader({
                   isRefreshing ? 'animate-spin' : ''
                 }`}
               />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 rounded-lg p-0 text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+              onClick={onOpenShortcutsModal}
+              title="Keyboard shortcuts"
+              aria-label="Keyboard shortcuts"
+            >
+              <Keyboard className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"

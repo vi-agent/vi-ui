@@ -12,12 +12,17 @@ type SessionRow = {
   /** Model this session runs with; NULL until the app records one for it. */
   model: string | null;
   isArchived: number;
+  /** ISO timestamp when the session was archived; NULL when not archived.
+   * Optional in the type so existing code that creates SessionRow objects
+   * (e.g. test factories) without this field still type-checks.
+   */
+  archivedAt?: string | null;
   created_at: string;
   updated_at: string;
 };
 
 const SESSION_ROW_COLUMNS =
-  'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, model, isArchived, created_at, updated_at';
+  'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, model, isArchived, archivedAt, created_at, updated_at';
 
 const SQLITE_UTC_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
@@ -430,14 +435,38 @@ export const sessionsDb = {
   /**
    * Soft-delete and restore both use the same flag update so callers keep the
    * row, metadata, and file path intact while toggling visibility.
+   *
+   * When archiving (isArchived = true), sets `archivedAt` to the current
+   * timestamp so the 7-day purge job can determine when to hard-delete.
+   * When restoring (isArchived = false), clears `archivedAt` to NULL.
    */
   updateSessionIsArchived(sessionId: string, isArchived: boolean): void {
     const db = getConnection();
     db.prepare(
       `UPDATE sessions
-       SET isArchived = ?
+       SET isArchived = ?,
+           archivedAt = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END
        WHERE session_id = ?`
-    ).run(isArchived ? 1 : 0, sessionId);
+    ).run(isArchived ? 1 : 0, isArchived ? 1 : 0, sessionId);
+  },
+
+  /**
+   * Returns sessions that have been archived for at least the given number of
+   * days. Used by the purge job to hard-delete stale archived sessions.
+   */
+  getSessionsArchivedBefore(cutoffIso: string): SessionRow[] {
+    const db = getConnection();
+    const rows = db
+      .prepare(
+        `SELECT ${SESSION_ROW_COLUMNS}
+         FROM sessions
+         WHERE isArchived = 1
+           AND archivedAt IS NOT NULL
+           AND datetime(archivedAt) <= datetime(?)`
+      )
+      .all(cutoffIso) as SessionRow[];
+
+    return normalizeSessionRows(rows);
   },
 
   deleteSessionById(sessionId: string): boolean {

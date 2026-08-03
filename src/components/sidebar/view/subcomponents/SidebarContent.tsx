@@ -140,6 +140,7 @@ type SidebarContentProps = {
   isRefreshing: boolean;
   onCreateProject: () => void;
   onCollapseSidebar: () => void;
+  onOpenShortcutsModal?: () => void;
   updateAvailable: boolean;
   restartRequired: boolean;
   releaseInfo: ReleaseInfo | null;
@@ -178,6 +179,7 @@ export default function SidebarContent({
   isRefreshing,
   onCreateProject,
   onCollapseSidebar,
+  onOpenShortcutsModal,
   updateAvailable,
   restartRequired,
   releaseInfo,
@@ -218,6 +220,7 @@ export default function SidebarContent({
         isRefreshing={isRefreshing}
         onCreateProject={onCreateProject}
         onCollapseSidebar={onCollapseSidebar}
+        onOpenShortcutsModal={onOpenShortcutsModal}
         t={t}
       />
 
