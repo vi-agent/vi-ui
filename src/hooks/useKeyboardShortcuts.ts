@@ -153,12 +153,14 @@ export function getShortcutDefinitions(mac: boolean = isMac()): Array<{
       label: 'Navigate to previous session',
       descriptor: { meta: true, ctrl: true, shift: true, key: 'arrowup' },
       display: mac ? `${ctrl}${mod}${shift}↑` : `Ctrl${sep}Ctrl${sep}Shift${sep}↑`,
+      alwaysFires: true,
     },
     {
       id: 'navigate-next',
       label: 'Navigate to next session',
       descriptor: { meta: true, ctrl: true, shift: true, key: 'arrowdown' },
       display: mac ? `${ctrl}${mod}${shift}↓` : `Ctrl${sep}Ctrl${sep}Shift${sep}↓`,
+      alwaysFires: true,
     },
     {
       id: 'open-shortcuts-modal',

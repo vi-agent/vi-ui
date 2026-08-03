@@ -3,13 +3,13 @@ import type { SidebarNavItem } from '../types/types';
 import { getAllSessions, sortProjects, readProjectSortOrder } from './utils';
 
 /**
- * Builds the ordered list of navigatable sidebar sessions.
+ * Builds the ordered list of navigatable sidebar items.
  *
- * Returns one `SidebarNavItem` per session across every project, in the order
- * they appear in the sidebar (projects sorted by the user's chosen sort order,
- * sessions within each project sorted by recency). Projects that are currently
- * collapsed are still included so the keyboard shortcut can traverse them and
- * auto-expand the target when the highlight moves in.
+ * Emits one item per session across every project, in the order they appear
+ * in the sidebar (projects sorted by the user's chosen sort order, sessions
+ * within each project sorted by recency). Projects with no sessions still
+ * contribute a single project-only item so the keyboard shortcut lands on
+ * the project's default new-chat page.
  *
  * This is a pure function so it can be unit-tested independently of React.
  *
@@ -27,6 +27,15 @@ export function buildSidebarNavItems(
 
   for (const project of sorted) {
     const sessions = getAllSessions(project);
+    if (sessions.length === 0) {
+      items.push({
+        sessionId: null,
+        projectId: project.projectId,
+        session: null,
+        project,
+      });
+      continue;
+    }
     for (const session of sessions) {
       items.push({
         sessionId: session.id,

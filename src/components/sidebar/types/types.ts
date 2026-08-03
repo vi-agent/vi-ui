@@ -4,13 +4,14 @@ import type { LoadingProgress, Project, ProjectSession, LLMProvider } from '../.
 import type { SessionActivityMap } from '../../../hooks/useSessionProtection';
 
 /**
- * Represents one navigatable item in the sidebar (a session within an expanded project).
- * Used by the keyboard navigation shortcut to move between sessions.
+ * Represents one navigatable item in the sidebar. Either a session under a
+ * project, or the project itself when it has no sessions (in which case the
+ * keyboard shortcut lands on the project's default new-chat page).
  */
 export type SidebarNavItem = {
-  sessionId: string;
+  sessionId: string | null;
   projectId: string;
-  session: ProjectSession & { __provider: LLMProvider };
+  session: (ProjectSession & { __provider: LLMProvider }) | null;
   project: Project;
 };
 

@@ -125,10 +125,41 @@ test('buildSidebarNavItems: starred projects sort before non-starred (name order
   assert.equal(sessionIds[1], 'z1');
 });
 
-test('buildSidebarNavItems: projects with no sessions contribute no items', () => {
+test('buildSidebarNavItems: projects with no sessions contribute a project-only item', () => {
   const emptyProject = makeProject({ projectId: 'empty', sessions: [] });
   const items = buildSidebarNavItems([emptyProject], 'name');
-  assert.equal(items.length, 0);
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.projectId, 'empty');
+  assert.equal(items[0]?.sessionId, null);
+  assert.equal(items[0]?.session, null);
+  assert.equal(items[0]?.project, emptyProject);
+});
+
+test('buildSidebarNavItems: project-only items are interleaved in sidebar order', () => {
+  const projA = makeProject({
+    projectId: 'proj-a',
+    displayName: 'Alpha',
+    sessions: [makeSession('a1'), makeSession('a2')],
+  });
+  const projB = makeProject({
+    projectId: 'proj-b',
+    displayName: 'Bravo',
+    sessions: [],
+  });
+  const projC = makeProject({
+    projectId: 'proj-c',
+    displayName: 'Charlie',
+    sessions: [makeSession('c1')],
+  });
+
+  const items = buildSidebarNavItems([projA, projB, projC], 'name');
+
+  assert.equal(items.length, 4);
+  assert.equal(items[0]?.sessionId, 'a1');
+  assert.equal(items[1]?.sessionId, 'a2');
+  assert.equal(items[2]?.projectId, 'proj-b');
+  assert.equal(items[2]?.sessionId, null);
+  assert.equal(items[3]?.sessionId, 'c1');
 });
 
 test('buildSidebarNavItems: walks projects in sidebar order with mixed session counts', () => {

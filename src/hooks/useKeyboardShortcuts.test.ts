@@ -159,11 +159,16 @@ test('getShortcutDefinitions: archive-session has alwaysFires = true', () => {
   assert.ok(archiveDef?.alwaysFires === true);
 });
 
-test('getShortcutDefinitions: only archive-session has alwaysFires', () => {
+test('getShortcutDefinitions: archive-session and navigation shortcuts have alwaysFires', () => {
   const defs = getShortcutDefinitions(true);
-  const alwaysFireDefs = defs.filter((d) => d.alwaysFires);
-  assert.equal(alwaysFireDefs.length, 1);
-  assert.equal(alwaysFireDefs[0]?.id, 'archive-session');
+  const alwaysFireIds = defs.filter((d) => d.alwaysFires).map((d) => d.id).sort();
+  assert.deepEqual(alwaysFireIds, ['archive-session', 'navigate-next', 'navigate-prev']);
+});
+
+test('getShortcutDefinitions: navigate-prev and navigate-next fire even when a text input is focused', () => {
+  const defs = getShortcutDefinitions(true);
+  assert.equal(defs.find((d) => d.id === 'navigate-prev')?.alwaysFires, true);
+  assert.equal(defs.find((d) => d.id === 'navigate-next')?.alwaysFires, true);
 });
 
 // ---------------------------------------------------------------------------

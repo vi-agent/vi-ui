@@ -121,8 +121,17 @@ function AppContentInner() {
     const items = navItemsRef.current;
     if (items.length === 0) return;
 
-    const currentId = selectedSession?.id ?? sessionId ?? null;
-    const currentIndex = currentId ? items.findIndex((item) => item.sessionId === currentId) : -1;
+    const currentSessionId = selectedSession?.id ?? sessionId ?? null;
+    const currentProjectId = selectedProject?.projectId ?? null;
+    let currentIndex = -1;
+    if (currentSessionId) {
+      currentIndex = items.findIndex((item) => item.sessionId === currentSessionId);
+    } else if (currentProjectId) {
+      // No session open — anchor on the project-only item if there is one.
+      currentIndex = items.findIndex(
+        (item) => item.sessionId === null && item.projectId === currentProjectId,
+      );
+    }
 
     let targetIndex: number;
     if (direction === 'prev') {
@@ -136,11 +145,15 @@ function AppContentInner() {
 
     ensureProjectExpandedRef.current?.(target.projectId);
 
-    handleSessionSelect({
-      ...target.session,
-      __projectId: target.projectId,
-    });
-  }, [handleSessionSelect, selectedSession?.id, sessionId]);
+    if (target.session) {
+      handleSessionSelect({
+        ...target.session,
+        __projectId: target.projectId,
+      });
+    } else {
+      handleProjectSelect(target.project);
+    }
+  }, [handleSessionSelect, handleProjectSelect, selectedSession?.id, selectedProject?.projectId, sessionId]);
 
   // Global keyboard shortcut handler.
   useKeyboardShortcuts({
