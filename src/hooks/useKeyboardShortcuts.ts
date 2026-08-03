@@ -24,6 +24,8 @@ export type KeyboardShortcutHandlers = {
   onNavigateNext?: () => void;
   /** Cmd+/ — open shortcuts modal */
   onOpenShortcutsModal?: () => void;
+  /** Ctrl+Cmd+Shift+R — start inline rename of the current session title */
+  onRenameSession?: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -164,6 +166,14 @@ export function getShortcutDefinitions(mac: boolean = isMac()): Array<{
       descriptor: { meta: true, key: '/' },
       display: mac ? `${mod}/` : `Ctrl${sep}/`,
     },
+    {
+      id: 'rename-session',
+      label: 'Rename current session',
+      descriptor: { meta: true, ctrl: true, shift: true, key: 'r' },
+      display: mac
+        ? `${ctrl}${shift}${mod}R`
+        : `Ctrl${sep}Shift${sep}Ctrl${sep}R`,
+    },
   ];
 }
 
@@ -220,6 +230,9 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers): void {
             break;
           case 'open-shortcuts-modal':
             handlersRef.current.onOpenShortcutsModal?.();
+            break;
+          case 'rename-session':
+            handlersRef.current.onRenameSession?.();
             break;
         }
         break; // Only fire the first matching shortcut.

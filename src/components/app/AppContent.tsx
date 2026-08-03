@@ -152,6 +152,12 @@ function AppContentInner() {
     onNavigatePrev: () => handleNavigate('prev'),
     onNavigateNext: () => handleNavigate('next'),
     onOpenShortcutsModal: () => setShowShortcutsModal(true),
+    onRenameSession: () => {
+      // Only dispatch if there is an active chat session open.
+      const currentSessionId = selectedSession?.id ?? sessionId ?? null;
+      if (!currentSessionId) return;
+      window.dispatchEvent(new CustomEvent('vi:start-title-rename'));
+    },
   });
 
   // Queued messages for sessions that finish while another session (or none)
@@ -340,6 +346,7 @@ function AppContentInner() {
           newSessionTrigger={newSessionTrigger}
           onProjectSelect={handleProjectSelect}
           onProjectsRefresh={() => void refreshProjectsSilently()}
+          onAfterRename={() => void refreshProjectsSilently()}
         />
       </div>
 

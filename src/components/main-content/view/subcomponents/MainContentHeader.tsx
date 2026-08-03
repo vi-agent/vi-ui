@@ -13,7 +13,8 @@ export default function MainContentHeader({
   shouldShowBrowserTab,
   isMobile,
   onMenuClick,
-}: MainContentHeaderProps) {
+  onAfterRename,
+}: MainContentHeaderProps & { onAfterRename?: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -44,6 +45,7 @@ export default function MainContentHeader({
             selectedProject={selectedProject}
             selectedSession={selectedSession}
             shouldShowTasksTab={shouldShowTasksTab}
+            onAfterRename={onAfterRename}
           />
         </div>
 

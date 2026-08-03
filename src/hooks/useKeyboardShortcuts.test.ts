@@ -140,9 +140,9 @@ test('matchesShortcut: does not confuse ArrowUp and ArrowDown', () => {
 // getShortcutDefinitions — smoke tests
 // ---------------------------------------------------------------------------
 
-test('getShortcutDefinitions: returns all 5 shortcuts', () => {
+test('getShortcutDefinitions: returns all 6 shortcuts', () => {
   const defs = getShortcutDefinitions(true);
-  assert.equal(defs.length, 5);
+  assert.equal(defs.length, 6);
 
   const ids = defs.map((d) => d.id);
   assert.ok(ids.includes('new-session'));
@@ -150,6 +150,7 @@ test('getShortcutDefinitions: returns all 5 shortcuts', () => {
   assert.ok(ids.includes('navigate-prev'));
   assert.ok(ids.includes('navigate-next'));
   assert.ok(ids.includes('open-shortcuts-modal'));
+  assert.ok(ids.includes('rename-session'));
 });
 
 test('getShortcutDefinitions: archive-session has alwaysFires = true', () => {
@@ -163,6 +164,57 @@ test('getShortcutDefinitions: only archive-session has alwaysFires', () => {
   const alwaysFireDefs = defs.filter((d) => d.alwaysFires);
   assert.equal(alwaysFireDefs.length, 1);
   assert.equal(alwaysFireDefs[0]?.id, 'archive-session');
+});
+
+// ---------------------------------------------------------------------------
+// rename-session shortcut
+// ---------------------------------------------------------------------------
+
+test('getShortcutDefinitions: rename-session has meta+ctrl+shift and key "r"', () => {
+  const defs = getShortcutDefinitions(true);
+  const renameDef = defs.find((d) => d.id === 'rename-session');
+  assert.ok(renameDef, 'rename-session definition must exist');
+  assert.ok(renameDef?.descriptor.meta === true);
+  assert.ok(renameDef?.descriptor.ctrl === true);
+  assert.ok(renameDef?.descriptor.shift === true);
+  assert.equal(renameDef?.descriptor.key, 'r');
+});
+
+test('getShortcutDefinitions: rename-session does not have alwaysFires', () => {
+  const defs = getShortcutDefinitions(true);
+  const renameDef = defs.find((d) => d.id === 'rename-session');
+  assert.ok(!renameDef?.alwaysFires, 'rename-session should not fire when input is focused');
+});
+
+test('matchesShortcut: matches Ctrl+Cmd+Shift+R on Mac', () => {
+  const shortcut: ShortcutDescriptor = { meta: true, ctrl: true, shift: true, key: 'r' };
+  const event = makeEvent({ key: 'r', metaKey: true, ctrlKey: true, shiftKey: true });
+  assert.ok(matchesShortcut(event, shortcut, true));
+});
+
+test('matchesShortcut: rejects Ctrl+Cmd+R on Mac when Shift is required', () => {
+  const shortcut: ShortcutDescriptor = { meta: true, ctrl: true, shift: true, key: 'r' };
+  const event = makeEvent({ key: 'r', metaKey: true, ctrlKey: true, shiftKey: false });
+  assert.ok(!matchesShortcut(event, shortcut, true));
+});
+
+test('matchesShortcut: matches Ctrl+Shift+R on non-Mac (meta+ctrl collapse to ctrlKey)', () => {
+  const shortcut: ShortcutDescriptor = { meta: true, ctrl: true, shift: true, key: 'r' };
+  const event = makeEvent({ key: 'r', ctrlKey: true, shiftKey: true });
+  assert.ok(matchesShortcut(event, shortcut, false));
+});
+
+test('getShortcutDefinitions: rename-session Mac display includes ⌘ and R', () => {
+  const defs = getShortcutDefinitions(true);
+  const renameDef = defs.find((d) => d.id === 'rename-session');
+  assert.ok(renameDef?.display.includes('⌘'), `Expected ⌘ in "${renameDef?.display}"`);
+  assert.ok(renameDef?.display.toUpperCase().includes('R'), `Expected R in "${renameDef?.display}"`);
+});
+
+test('getShortcutDefinitions: rename-session non-Mac display includes Ctrl', () => {
+  const defs = getShortcutDefinitions(false);
+  const renameDef = defs.find((d) => d.id === 'rename-session');
+  assert.ok(renameDef?.display.includes('Ctrl'), `Expected Ctrl in "${renameDef?.display}"`);
 });
 
 test('getShortcutDefinitions: archive-session descriptor has ctrl and meta both true', () => {

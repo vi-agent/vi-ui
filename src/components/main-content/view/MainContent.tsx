@@ -54,7 +54,8 @@ function MainContent({
   newSessionTrigger,
   onProjectSelect,
   onProjectsRefresh,
-}: MainContentProps) {
+  onAfterRename,
+}: MainContentProps & { onAfterRename?: () => void }) {
   const { preferences } = useUiPreferences();
   const { showRawParameters, showThinking, sendByCtrlEnter } = preferences;
 
@@ -153,6 +154,7 @@ function MainContent({
         shouldShowBrowserTab={shouldShowBrowserTab}
         isMobile={isMobile}
         onMenuClick={onMenuClick}
+        onAfterRename={onAfterRename}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

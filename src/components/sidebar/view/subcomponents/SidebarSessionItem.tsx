@@ -375,8 +375,8 @@ export default function SidebarSessionItem({
           href={`/session/${session.id}`}
           className={cn(
             buttonVariants({ variant: 'ghost' }),
-            'h-auto w-full justify-start rounded-md border bg-card p-2 pr-11 text-left font-normal transition-all duration-150',
-            isSelected ? 'border-primary/20 bg-primary/5' : 'border-border/30',
+            'relative h-auto w-full justify-start overflow-hidden rounded-md border bg-card p-2 pr-11 text-left font-normal transition-all duration-150',
+            isSelected ? 'border-primary/40 bg-primary/10' : 'border-border/30',
             !isSelected && isProcessing
               ? 'border-border/60 bg-muted/20 hover:bg-muted/25'
               : !isSelected && sessionView.isActive
@@ -391,18 +391,22 @@ export default function SidebarSessionItem({
             onSessionSelect(session, project.projectId);
           }}
         >
+          {/* Left accent bar — visible only on the selected row */}
+          {isSelected && (
+            <span className="pointer-events-none absolute inset-y-0 left-0 w-0.5 rounded-l-md bg-primary" aria-hidden="true" />
+          )}
           <div className="flex w-full min-w-0 items-center gap-2">
             <div
               className={cn(
                 'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md',
-                isSelected ? 'bg-primary/10' : 'bg-muted/50',
+                isSelected ? 'bg-primary/20' : 'bg-muted/50',
               )}
             >
               <SessionProviderLogo provider={session.__provider} className="h-3 w-3" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <div className="min-w-0 flex-1 truncate text-sm font-normal text-foreground">{sessionView.sessionName}</div>
+                <div className={cn('min-w-0 flex-1 truncate text-sm text-foreground', isSelected ? 'font-medium' : 'font-normal')}>{sessionView.sessionName}</div>
                 {isProcessing ? (
                   <span
                     className={cn(
