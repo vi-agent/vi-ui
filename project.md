@@ -22,9 +22,9 @@ Every new chat opened through vi-ui must:
 
 ## Deployment
 
-- **Prod**: `~/vi-ui/` — systemd `--user` unit `vi-ui.service` (TBD).
+- **Prod**: `~/vi-ui/` — systemd `--user` unit `vi-ui.service` running at `~/.config/systemd/user/vi-ui.service`.
 - **Dev**: `~/workplace/vi-ui/` — edit here, push to `main`, `bash ~/vi-ui/scripts/deploy.sh` to release.
-- **Port**: 3001 by default (upstream). Reverse-proxied via `lan-ssl-proxy` (TBD).
+- **Port**: 3001 (internal, `127.0.0.1` only). Exposed via `lan-ssl-proxy` on **https://192.168.40.33:8444** (dedicated SSL port, no subpath rewriting needed).
 
 ## Epics
 
@@ -42,11 +42,11 @@ Make every new chat equivalent to `via`. Concrete changes identified in initial 
 - **cwd default** — `shell-websocket.service.ts:308` currently defaults `cwd` to `process.cwd()` when no project is selected. Decide: default to `$HOME` or force a project selection. (`via` in a terminal runs in whatever pwd, so `$HOME` is the closest analogue for "just opened a chat".)
 - **UI**: remove/hide the `skipPermissions` toggle (it's always on) and remove the provider selector (Claude only).
 
-### E02: Deployment as a systemd user service
+### E02: Deployment as a systemd user service ✅ IMPLEMENTED
 
-- Create `~/.config/systemd/user/vi-ui.service` that runs `npm run server` from `~/vi-ui`.
-- Wire `scripts/deploy.sh` (already scaffolded) to restart it.
-- Decide LAN-SSL-proxy integration for HTTPS access.
+- `~/.config/systemd/user/vi-ui.service` — runs `node dist-server/server/index.js` from `~/vi-ui` on `127.0.0.1:3001`. Enabled and started via `systemctl --user enable --now vi-ui.service`.
+- `lan-ssl-proxy` wired: dedicated `server { listen 8444 ssl; }` block proxies to `:3001` with WebSocket upgrade headers (`Upgrade`, `Connection`) and long timeouts (3600 s) for chat streams. No base-URL rewriting needed — clean dedicated port.
+- Access URL: **https://192.168.40.33:8444**
 
 ### E03: Strip multi-provider UX
 
