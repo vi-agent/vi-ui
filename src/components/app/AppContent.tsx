@@ -157,11 +157,19 @@ function AppContentInner() {
     // Keep the navigated-to item visible in the sidebar scroll viewport.
     // requestAnimationFrame lets the expand-project state above render first
     // so a just-expanded session row exists in the DOM before we scroll to it.
+    // The row is rendered twice (mobile + desktop with mutually exclusive
+    // visibility), so pick the currently visible one via offsetParent.
     requestAnimationFrame(() => {
       const selector = target.session
         ? `[data-nav-session-id="${target.session.id}"]`
         : `[data-nav-project-id="${target.projectId}"]`;
-      document.querySelector<HTMLElement>(selector)?.scrollIntoView({ block: 'nearest' });
+      const nodes = document.querySelectorAll<HTMLElement>(selector);
+      for (const node of nodes) {
+        if (node.offsetParent !== null) {
+          node.scrollIntoView({ block: 'nearest' });
+          return;
+        }
+      }
     });
   }, [handleSessionSelect, handleProjectSelect, selectedSession?.id, selectedProject?.projectId, sessionId]);
 
