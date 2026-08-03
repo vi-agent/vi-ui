@@ -1,5 +1,18 @@
+import type React from 'react';
+
 import type { LoadingProgress, Project, ProjectSession, LLMProvider } from '../../../types/app';
 import type { SessionActivityMap } from '../../../hooks/useSessionProtection';
+
+/**
+ * Represents one navigatable item in the sidebar (a session within an expanded project).
+ * Used by the keyboard navigation shortcut to move between sessions.
+ */
+export type SidebarNavItem = {
+  sessionId: string;
+  projectId: string;
+  session: ProjectSession & { __provider: LLMProvider };
+  project: Project;
+};
 
 export type ProjectSortOrder = 'name' | 'date';
 export type SidebarSearchMode = 'projects' | 'conversations' | 'running' | 'archived';
@@ -59,6 +72,10 @@ export type SidebarProps = {
   settingsInitialTab: string;
   onCloseSettings: () => void;
   isMobile: boolean;
+  /** Callback to open the keyboard shortcuts modal from the toolbar button. */
+  onOpenShortcutsModal?: () => void;
+  /** Ref populated by the sidebar with the current ordered navigation items. */
+  navItemsRef?: React.MutableRefObject<SidebarNavItem[]>;
 };
 
 export type SessionViewModel = {

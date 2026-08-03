@@ -9,7 +9,8 @@ import { useTaskMaster } from '../../../contexts/TaskMasterContext';
 import { usePaletteOps } from '../../../contexts/PaletteOpsContext';
 import { useTasksSettings } from '../../../contexts/TasksSettingsContext';
 import type { Project, LLMProvider } from '../../../types/app';
-import type { MCPServerStatus, SidebarProps } from '../types/types';
+import type { MCPServerStatus, SidebarNavItem, SidebarProps } from '../types/types';
+import { buildSidebarNavItems } from '../utils/navigation';
 
 import SidebarCollapsed from './subcomponents/SidebarCollapsed';
 import SidebarContent from './subcomponents/SidebarContent';
@@ -41,6 +42,8 @@ function Sidebar({
   settingsInitialTab,
   onCloseSettings,
   isMobile,
+  onOpenShortcutsModal,
+  navItemsRef,
 }: SidebarProps) {
   const { t } = useTranslation(['sidebar', 'common']);
   const { isPWA } = useDeviceSettings({ trackMobile: false });
@@ -130,6 +133,14 @@ function Sidebar({
     setSidebarVisible: (visible) => setPreference('sidebarVisible', visible),
     sidebarVisible,
   });
+
+  // Populate navItemsRef with the ordered list of navigatable sidebar sessions
+  // (respecting expand/collapse state) so the global keyboard shortcut hook can
+  // move between sessions without needing access to internal sidebar state.
+  useEffect(() => {
+    if (!navItemsRef) return;
+    navItemsRef.current = buildSidebarNavItems(filteredProjects, expandedProjects);
+  }, [filteredProjects, expandedProjects, navItemsRef]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -298,6 +309,7 @@ function Sidebar({
             isRefreshing={isRefreshing}
             onCreateProject={() => setShowNewProject(true)}
             onCollapseSidebar={handleCollapseSidebar}
+            onOpenShortcutsModal={onOpenShortcutsModal}
             updateAvailable={updateAvailable}
             restartRequired={restartRequired}
             releaseInfo={releaseInfo}

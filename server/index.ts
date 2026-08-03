@@ -52,6 +52,10 @@ import { initializeDatabase, sessionsDb } from './modules/database/index.js';
 import { configureWebPush } from './modules/notifications/index.js';
 import { IS_PLATFORM } from './constants/config.js';
 import { syncViContextProjects } from './modules/projects/services/vi-context-sync.service.js';
+import {
+    runArchivePurge,
+    scheduleArchivePurge,
+} from './modules/providers/services/archive-purge.service.js';
 
 const __dirname = getModuleDirectory(import.meta.url);
 // The server source runs from /server, while the compiled output runs from /dist-server/server.
@@ -374,6 +378,12 @@ async function startServer() {
             startEnabledPluginServers().catch(err => {
                 console.error('[Plugins] Error during startup:', err.message);
             });
+
+            // Purge stale archived sessions on startup, then hourly.
+            void runArchivePurge().catch((err) => {
+                console.warn('[archive-purge] Startup purge failed:', err);
+            });
+            scheduleArchivePurge();
         });
 
         await closeSessionsWatcher();

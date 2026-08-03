@@ -36,8 +36,12 @@ type ProviderCapabilities = {
 const PROVIDER_CAPABILITIES: Record<LLMProvider, ProviderCapabilities> = {
   claude: {
     provider: 'claude',
-    permissionModes: ['default', 'auto', 'acceptEdits', 'bypassPermissions', 'plan'],
-    defaultPermissionMode: 'default',
+    permissionModes: ['bypassPermissions', 'default', 'auto', 'acceptEdits', 'plan'],
+    // vi parity: every new Claude session starts in bypass-permissions mode,
+    // equivalent to `--dangerously-skip-permissions`. The server runtime already
+    // forces bypassPermissions at the SDK level; this default surfaces that in
+    // the UI so the permission-mode picker reflects the actual behaviour.
+    defaultPermissionMode: 'bypassPermissions',
     supportsImages: true,
     supportsFiles: true,
     supportsAbort: true,

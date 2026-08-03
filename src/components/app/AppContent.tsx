@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import Sidebar from '../sidebar/view/Sidebar';
 import MainContent from '../main-content/view/MainContent';
 import CommandPalette from '../command-palette/CommandPalette';
+import KeyboardShortcutsModal from '../keyboard-shortcuts-modal/KeyboardShortcutsModal';
 import { QuickSettingsPanel } from '../quick-settings-panel';
 import { useWebSocket } from '../../contexts/WebSocketContext';
 import { PaletteOpsProvider, usePaletteOpsRegister } from '../../contexts/PaletteOpsContext';
@@ -12,6 +13,8 @@ import { useDeviceSettings } from '../../hooks/useDeviceSettings';
 import { useSessionProtection } from '../../hooks/useSessionProtection';
 import { useProjectsState } from '../../hooks/useProjectsState';
 import { useQueuedMessageAutoSend } from '../../hooks/useQueuedMessageAutoSend';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import type { SidebarNavItem } from '../sidebar/types/types';
 import { api } from '../../utils/api';
 
 type RunningSessionApiItem = {
@@ -78,6 +81,7 @@ function AppContentInner() {
     registerOptimisticSession,
     sidebarSharedProps,
     handleNewSession,
+    handleSessionSelect,
     handleProjectSelect,
   } = useProjectsState({
     sessionId,
@@ -85,6 +89,69 @@ function AppContentInner() {
     subscribe,
     isMobile,
     activeSessions: processingSessions,
+  });
+
+  // --- Keyboard shortcuts state ---
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+
+  // Ref populated by Sidebar with the current ordered list of navigatable items.
+  const navItemsRef = useRef<SidebarNavItem[]>([]);
+
+  // Archive the current session silently (no confirm dialog).
+  const handleArchiveCurrentSession = useCallback(async () => {
+    const currentSessionId = selectedSession?.id ?? sessionId ?? null;
+    if (!currentSessionId) return;
+
+    try {
+      const response = await api.deleteSession(currentSessionId, false);
+      if (response.ok) {
+        // Navigate away and let sidebar refresh pick up the change.
+        navigate('/');
+        void refreshProjectsSilently();
+      }
+    } catch (error) {
+      console.error('[keyboard] Failed to archive session:', error);
+    }
+  }, [navigate, refreshProjectsSilently, selectedSession?.id, sessionId]);
+
+  // Navigate to the prev/next sidebar item (wraps at ends).
+  const handleNavigate = useCallback((direction: 'prev' | 'next') => {
+    const items = navItemsRef.current;
+    if (items.length === 0) return;
+
+    const currentId = selectedSession?.id ?? sessionId ?? null;
+    const currentIndex = currentId ? items.findIndex((item) => item.sessionId === currentId) : -1;
+
+    let targetIndex: number;
+    if (direction === 'prev') {
+      targetIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+    } else {
+      targetIndex = currentIndex >= items.length - 1 ? 0 : currentIndex + 1;
+    }
+
+    const target = items[targetIndex];
+    if (!target) return;
+
+    handleSessionSelect({
+      ...target.session,
+      __projectId: target.projectId,
+    });
+  }, [handleSessionSelect, selectedSession?.id, sessionId]);
+
+  // Global keyboard shortcut handler.
+  useKeyboardShortcuts({
+    onNewSession: () => {
+      if (selectedProject) {
+        handleNewSession(selectedProject);
+      } else {
+        // No project open — navigate home so user can pick one.
+        navigate('/');
+      }
+    },
+    onArchiveSession: () => { void handleArchiveCurrentSession(); },
+    onNavigatePrev: () => handleNavigate('prev'),
+    onNavigateNext: () => handleNavigate('next'),
+    onOpenShortcutsModal: () => setShowShortcutsModal(true),
   });
 
   // Queued messages for sessions that finish while another session (or none)
@@ -208,7 +275,11 @@ function AppContentInner() {
     <div className="fixed inset-0 flex bg-background" style={{ bottom: 'var(--keyboard-height, 0px)' }}>
       {!isMobile ? (
         <div className="h-full flex-shrink-0 border-r border-border/50">
-          <Sidebar {...sidebarSharedProps} />
+          <Sidebar
+            {...sidebarSharedProps}
+            onOpenShortcutsModal={() => setShowShortcutsModal(true)}
+            navItemsRef={navItemsRef}
+          />
         </div>
       ) : (
         <div
@@ -234,7 +305,11 @@ function AppContentInner() {
             onClick={(event) => event.stopPropagation()}
             onTouchStart={(event) => event.stopPropagation()}
           >
-            <Sidebar {...sidebarSharedProps} />
+            <Sidebar
+              {...sidebarSharedProps}
+              onOpenShortcutsModal={() => setShowShortcutsModal(true)}
+              navItemsRef={navItemsRef}
+            />
           </div>
         </div>
       )}
@@ -276,6 +351,11 @@ function AppContentInner() {
       />
 
       <QuickSettingsPanel />
+
+      <KeyboardShortcutsModal
+        open={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
     </div>
   );
 }

@@ -416,6 +416,28 @@ const addSessionModelColumn = (db: Database): void => {
   addColumnToTableIfNotExists(db, 'sessions', columnNames, 'model', 'TEXT');
 };
 
+/**
+ * Adds the `archivedAt` column that records when a session was archived.
+ *
+ * Used by the 7-day purge job to find sessions ready for hard-deletion.
+ * Pre-existing archived rows get their archivedAt backfilled to updated_at
+ * (best available approximation) so they age out correctly.
+ */
+const addSessionArchivedAtColumn = (db: Database): void => {
+  const sessionsTableInfo = getTableInfo(db, 'sessions');
+  const columnNames = sessionsTableInfo.map((column) => column.name);
+
+  addColumnToTableIfNotExists(db, 'sessions', columnNames, 'archivedAt', 'DATETIME DEFAULT NULL');
+
+  // Backfill archivedAt for rows that are already archived but have no timestamp.
+  // Use updated_at as the best available proxy for when the session was archived.
+  db.exec(`
+    UPDATE sessions
+    SET archivedAt = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+    WHERE isArchived = 1 AND archivedAt IS NULL
+  `);
+};
+
 const ensureProjectsForSessionPaths = (db: Database): void => {
   if (!tableExists(db, 'sessions')) {
     return;
@@ -467,6 +489,7 @@ export const runMigrations = (db: Database) => {
     migrateLegacySessionNames(db);
     addProviderSessionIdMapping(db);
     addSessionModelColumn(db);
+    addSessionArchivedAtColumn(db);
     ensureProjectsForSessionPaths(db);
 
     db.exec('CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id)');

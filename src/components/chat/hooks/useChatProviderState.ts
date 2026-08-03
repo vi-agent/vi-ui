@@ -38,8 +38,12 @@ const readStoredProvider = (): LLMProvider => {
  * source of truth; this mirror exists so the composer renders sensibly on
  * first paint and when the capabilities request fails.
  */
+// vi parity: bypassPermissions is listed first so getDefaultPermissionModeForProvider
+// returns it as the default for Claude on first paint, before the capabilities
+// request resolves. This keeps the UI consistent with what the server runtime
+// actually does (it always forces bypassPermissions for Claude sessions).
 const FALLBACK_PERMISSION_MODES: Record<LLMProvider, PermissionMode[]> = {
-  claude: ['default', 'auto', 'acceptEdits', 'bypassPermissions', 'plan'],
+  claude: ['bypassPermissions', 'default', 'auto', 'acceptEdits', 'plan'],
   cursor: ['default', 'acceptEdits', 'bypassPermissions', 'plan'],
   codex: ['default', 'acceptEdits', 'bypassPermissions'],
   opencode: ['default', 'acceptEdits', 'bypassPermissions', 'plan'],

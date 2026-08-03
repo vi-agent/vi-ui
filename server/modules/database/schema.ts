@@ -114,6 +114,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     -- was last used with instead of falling back to the catalog default.
     model TEXT,
     isArchived BOOLEAN DEFAULT 0,
+    -- Timestamp when the session was archived. Set to CURRENT_TIMESTAMP on
+    -- archive, cleared to NULL on restore. The 7-day purge job uses this to
+    -- hard-delete sessions that have been archived for ≥7 days.
+    archivedAt DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (session_id),
