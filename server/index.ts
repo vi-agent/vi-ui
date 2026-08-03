@@ -51,6 +51,7 @@ import { browserUseService } from './modules/browser-use/browser-use.service.js'
 import { initializeDatabase, sessionsDb } from './modules/database/index.js';
 import { configureWebPush } from './modules/notifications/index.js';
 import { IS_PLATFORM } from './constants/config.js';
+import { syncViContextProjects } from './modules/projects/services/vi-context-sync.service.js';
 
 const __dirname = getModuleDirectory(import.meta.url);
 // The server source runs from /server, while the compiled output runs from /dist-server/server.
@@ -327,6 +328,11 @@ async function startServer() {
     try {
         // Initialize authentication database
         await initializeDatabase();
+
+        // Sync projects from vi-context.md (runs once at startup, non-fatal)
+        await syncViContextProjects().catch((err: unknown) => {
+            console.warn('[vi-context-sync] Unexpected error during project sync:', err);
+        });
 
         // Configure Web Push (VAPID keys)
         configureWebPush();
