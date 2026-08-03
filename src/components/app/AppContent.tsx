@@ -96,6 +96,8 @@ function AppContentInner() {
 
   // Ref populated by Sidebar with the current ordered list of navigatable items.
   const navItemsRef = useRef<SidebarNavItem[]>([]);
+  // Ref populated by Sidebar with a callback that expands a project by id.
+  const ensureProjectExpandedRef = useRef<((projectId: string) => void) | null>(null);
 
   // Archive the current session silently (no confirm dialog).
   const handleArchiveCurrentSession = useCallback(async () => {
@@ -131,6 +133,8 @@ function AppContentInner() {
 
     const target = items[targetIndex];
     if (!target) return;
+
+    ensureProjectExpandedRef.current?.(target.projectId);
 
     handleSessionSelect({
       ...target.session,
@@ -285,6 +289,7 @@ function AppContentInner() {
             {...sidebarSharedProps}
             onOpenShortcutsModal={() => setShowShortcutsModal(true)}
             navItemsRef={navItemsRef}
+            ensureProjectExpandedRef={ensureProjectExpandedRef}
           />
         </div>
       ) : (
@@ -315,6 +320,7 @@ function AppContentInner() {
               {...sidebarSharedProps}
               onOpenShortcutsModal={() => setShowShortcutsModal(true)}
               navItemsRef={navItemsRef}
+              ensureProjectExpandedRef={ensureProjectExpandedRef}
             />
           </div>
         </div>

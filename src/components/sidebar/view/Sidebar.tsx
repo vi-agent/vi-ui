@@ -44,6 +44,7 @@ function Sidebar({
   isMobile,
   onOpenShortcutsModal,
   navItemsRef,
+  ensureProjectExpandedRef,
 }: SidebarProps) {
   const { t } = useTranslation(['sidebar', 'common']);
   const { isPWA } = useDeviceSettings({ trackMobile: false });
@@ -86,6 +87,7 @@ function Sidebar({
     archivedSessionsCount,
     isArchivedSessionsLoading,
     toggleProject,
+    ensureProjectExpanded,
     handleSessionClick,
     toggleStarProject,
     isProjectStarred,
@@ -135,12 +137,24 @@ function Sidebar({
   });
 
   // Populate navItemsRef with the ordered list of navigatable sidebar sessions
-  // (respecting expand/collapse state) so the global keyboard shortcut hook can
-  // move between sessions without needing access to internal sidebar state.
+  // (across all projects, ignoring expand/collapse) so the global keyboard
+  // shortcut hook can move between sessions without needing access to internal
+  // sidebar state. Auto-expand of the target's project happens via
+  // ensureProjectExpandedRef, populated below.
   useEffect(() => {
     if (!navItemsRef) return;
-    navItemsRef.current = buildSidebarNavItems(filteredProjects, expandedProjects);
-  }, [filteredProjects, expandedProjects, navItemsRef]);
+    navItemsRef.current = buildSidebarNavItems(filteredProjects);
+  }, [filteredProjects, navItemsRef]);
+
+  useEffect(() => {
+    if (!ensureProjectExpandedRef) return;
+    ensureProjectExpandedRef.current = ensureProjectExpanded;
+    return () => {
+      if (ensureProjectExpandedRef.current === ensureProjectExpanded) {
+        ensureProjectExpandedRef.current = null;
+      }
+    };
+  }, [ensureProjectExpanded, ensureProjectExpandedRef]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {

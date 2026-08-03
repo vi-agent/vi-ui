@@ -432,10 +432,24 @@ export function useSidebarController({
   // `projectId` as their identifier after the migration.
   const toggleProject = useCallback((projectId: string) => {
     setExpandedProjects((prev) => {
-      const next = new Set<string>();
-      if (!prev.has(projectId)) {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
         next.add(projectId);
       }
+      return next;
+    });
+  }, []);
+
+  // Idempotent: expand a project if it isn't already expanded. Used by the
+  // keyboard nav shortcut to auto-open a collapsed project when the highlight
+  // moves into one of its sessions.
+  const ensureProjectExpanded = useCallback((projectId: string) => {
+    setExpandedProjects((prev) => {
+      if (prev.has(projectId)) return prev;
+      const next = new Set(prev);
+      next.add(projectId);
       return next;
     });
   }, []);
@@ -951,6 +965,7 @@ export function useSidebarController({
     archivedSessionsCount: archivedProjects.length + archivedSessions.length,
     isArchivedSessionsLoading,
     toggleProject,
+    ensureProjectExpanded,
     handleSessionClick,
     toggleStarProject,
     isProjectStarred,

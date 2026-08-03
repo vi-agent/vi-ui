@@ -76,6 +76,12 @@ export type SidebarProps = {
   onOpenShortcutsModal?: () => void;
   /** Ref populated by the sidebar with the current ordered navigation items. */
   navItemsRef?: React.MutableRefObject<SidebarNavItem[]>;
+  /**
+   * Ref populated by the sidebar with a callback that idempotently expands
+   * a project by id. Used by the keyboard nav shortcut to auto-expand a
+   * collapsed project when the highlight moves into one of its sessions.
+   */
+  ensureProjectExpandedRef?: React.MutableRefObject<((projectId: string) => void) | null>;
 };
 
 export type SessionViewModel = {

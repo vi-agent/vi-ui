@@ -39,19 +39,12 @@ function makeSession(id: string, lastActivity?: string) {
 // Tests
 // ---------------------------------------------------------------------------
 
-test('buildSidebarNavItems: returns empty array when no projects are expanded', () => {
-  const projects = [
-    makeProject({
-      projectId: 'proj-a',
-      sessions: [makeSession('session-1')],
-    }),
-  ];
-
-  const items = buildSidebarNavItems(projects, new Set(), 'name');
+test('buildSidebarNavItems: returns empty array when there are no projects', () => {
+  const items = buildSidebarNavItems([], 'name');
   assert.deepEqual(items, []);
 });
 
-test('buildSidebarNavItems: returns sessions for expanded projects only', () => {
+test('buildSidebarNavItems: includes sessions from ALL projects, ignoring expand state', () => {
   const projects = [
     makeProject({
       projectId: 'proj-a',
@@ -63,13 +56,11 @@ test('buildSidebarNavItems: returns sessions for expanded projects only', () => 
     }),
   ];
 
-  const expanded = new Set(['proj-a']);
-  const items = buildSidebarNavItems(projects, expanded, 'name');
-
+  const items = buildSidebarNavItems(projects, 'name');
   const sessionIds = items.map((i) => i.sessionId);
   assert.ok(sessionIds.includes('s-a1'));
   assert.ok(sessionIds.includes('s-a2'));
-  assert.ok(!sessionIds.includes('s-b1'), 'proj-b is not expanded');
+  assert.ok(sessionIds.includes('s-b1'), 'collapsed projects must still contribute sessions');
 });
 
 test('buildSidebarNavItems: each item carries correct projectId and project ref', () => {
@@ -78,7 +69,7 @@ test('buildSidebarNavItems: each item carries correct projectId and project ref'
     sessions: [makeSession('s-a1')],
   });
 
-  const items = buildSidebarNavItems([projA], new Set(['proj-a']), 'name');
+  const items = buildSidebarNavItems([projA], 'name');
 
   assert.equal(items.length, 1);
   assert.equal(items[0]?.projectId, 'proj-a');
@@ -93,11 +84,10 @@ test('buildSidebarNavItems: sorts sessions within a project by recency (newest f
 
   const project = makeProject({
     projectId: 'proj-a',
-    // Order in array is intentionally not sorted.
     sessions: [older, newest, newer],
   });
 
-  const items = buildSidebarNavItems([project], new Set(['proj-a']), 'name');
+  const items = buildSidebarNavItems([project], 'name');
   const sessionIds = items.map((i) => i.sessionId);
 
   assert.deepEqual(sessionIds, ['newest-session', 'new-session', 'old-session']);
@@ -108,8 +98,7 @@ test('buildSidebarNavItems: sorts projects alphabetically when sortOrder=name', 
   const projA = makeProject({ projectId: 'proj-a', displayName: 'Alpha', sessions: [makeSession('a1')] });
   const projB = makeProject({ projectId: 'proj-b', displayName: 'Bravo', sessions: [makeSession('b1')] });
 
-  const expanded = new Set(['proj-a', 'proj-b', 'proj-c']);
-  const items = buildSidebarNavItems([projC, projA, projB], expanded, 'name');
+  const items = buildSidebarNavItems([projC, projA, projB], 'name');
   const sessionIds = items.map((i) => i.sessionId);
 
   assert.deepEqual(sessionIds, ['a1', 'b1', 'c1']);
@@ -129,21 +118,20 @@ test('buildSidebarNavItems: starred projects sort before non-starred (name order
     sessions: [makeSession('star1')],
   });
 
-  const expanded = new Set(['zzz', 'aaa-star']);
-  const items = buildSidebarNavItems([unstarred, starred], expanded, 'name');
+  const items = buildSidebarNavItems([unstarred, starred], 'name');
   const sessionIds = items.map((i) => i.sessionId);
 
   assert.equal(sessionIds[0], 'star1', 'starred project sessions should come first');
   assert.equal(sessionIds[1], 'z1');
 });
 
-test('buildSidebarNavItems: projects with no sessions contribute no items when expanded', () => {
+test('buildSidebarNavItems: projects with no sessions contribute no items', () => {
   const emptyProject = makeProject({ projectId: 'empty', sessions: [] });
-  const items = buildSidebarNavItems([emptyProject], new Set(['empty']), 'name');
+  const items = buildSidebarNavItems([emptyProject], 'name');
   assert.equal(items.length, 0);
 });
 
-test('buildSidebarNavItems: handles multiple expanded projects with mixed session counts', () => {
+test('buildSidebarNavItems: walks projects in sidebar order with mixed session counts', () => {
   const proj1 = makeProject({
     projectId: 'p1',
     displayName: 'Alpha',
@@ -160,18 +148,11 @@ test('buildSidebarNavItems: handles multiple expanded projects with mixed sessio
     sessions: [makeSession('s31'), makeSession('s32'), makeSession('s33')],
   });
 
-  const expanded = new Set(['p1', 'p2', 'p3']);
-  const items = buildSidebarNavItems([proj3, proj1, proj2], expanded, 'name');
+  const items = buildSidebarNavItems([proj3, proj1, proj2], 'name');
 
   assert.equal(items.length, 6);
-  // Alphabetical order: Alpha(p1) → Beta(p2) → Gamma(p3)
   assert.equal(items[0]?.projectId, 'p1');
   assert.equal(items[1]?.projectId, 'p1');
   assert.equal(items[2]?.projectId, 'p2');
   assert.equal(items[3]?.projectId, 'p3');
-});
-
-test('buildSidebarNavItems: empty project list returns empty array', () => {
-  const items = buildSidebarNavItems([], new Set(['any']), 'name');
-  assert.equal(items.length, 0);
 });
