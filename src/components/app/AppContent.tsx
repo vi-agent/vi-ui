@@ -153,6 +153,16 @@ function AppContentInner() {
     } else {
       handleProjectSelect(target.project);
     }
+
+    // Keep the navigated-to item visible in the sidebar scroll viewport.
+    // requestAnimationFrame lets the expand-project state above render first
+    // so a just-expanded session row exists in the DOM before we scroll to it.
+    requestAnimationFrame(() => {
+      const selector = target.session
+        ? `[data-nav-session-id="${target.session.id}"]`
+        : `[data-nav-project-id="${target.projectId}"]`;
+      document.querySelector<HTMLElement>(selector)?.scrollIntoView({ block: 'nearest' });
+    });
   }, [handleSessionSelect, handleProjectSelect, selectedSession?.id, selectedProject?.projectId, sessionId]);
 
   // Global keyboard shortcut handler.

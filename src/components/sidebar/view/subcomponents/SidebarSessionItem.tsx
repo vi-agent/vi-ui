@@ -232,7 +232,7 @@ export default function SidebarSessionItem({
         </div>
       )}
 
-      <div className="md:hidden">
+      <div className="md:hidden" data-nav-session-id={session.id}>
         <div
           className={cn(
             'p-2 mx-3 my-0.5 rounded-md bg-card border active:scale-[0.98] transition-all duration-150 relative',
@@ -370,7 +370,7 @@ export default function SidebarSessionItem({
         </Dialog>
       </div>
 
-      <div className="hidden md:block">
+      <div className="hidden md:block" data-nav-session-id={session.id}>
         <a
           href={`/session/${session.id}`}
           className={cn(

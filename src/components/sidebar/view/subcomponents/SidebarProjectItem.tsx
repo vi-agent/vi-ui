@@ -145,7 +145,7 @@ export default function SidebarProjectItem({
   };
 
   return (
-    <div className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
+    <div className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')} data-nav-project-id={project.projectId}>
       <div className="md:group group">
         <div className="md:hidden">
           <div
