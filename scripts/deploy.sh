@@ -13,9 +13,10 @@ cd "$PROD"
 git pull --ff-only origin main
 
 echo "==> Installing dependencies..."
-# Force devDeps: prod has NODE_ENV=production which would otherwise skip
-# them, breaking the husky `prepare` hook and the vite/tsc build below.
-npm ci --include=dev
+# Force devDeps: prod shell has NODE_ENV=production, which npm honors over
+# --include=dev and skips devDependencies. That breaks the husky `prepare`
+# hook and the vite/tsc build below, so override for the install step.
+NODE_ENV=development npm ci
 
 echo "==> Building client + server..."
 npm run build
