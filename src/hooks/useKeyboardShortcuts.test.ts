@@ -159,10 +159,17 @@ test('getShortcutDefinitions: archive-session has alwaysFires = true', () => {
   assert.ok(archiveDef?.alwaysFires === true);
 });
 
-test('getShortcutDefinitions: archive-session and navigation shortcuts have alwaysFires', () => {
+test('getShortcutDefinitions: all shortcuts have alwaysFires', () => {
   const defs = getShortcutDefinitions(true);
   const alwaysFireIds = defs.filter((d) => d.alwaysFires).map((d) => d.id).sort();
-  assert.deepEqual(alwaysFireIds, ['archive-session', 'navigate-next', 'navigate-prev']);
+  assert.deepEqual(alwaysFireIds, [
+    'archive-session',
+    'navigate-next',
+    'navigate-prev',
+    'new-session',
+    'open-shortcuts-modal',
+    'rename-session',
+  ]);
 });
 
 test('getShortcutDefinitions: navigate-prev and navigate-next fire even when a text input is focused', () => {
@@ -185,10 +192,10 @@ test('getShortcutDefinitions: rename-session has meta+ctrl+shift and key "r"', (
   assert.equal(renameDef?.descriptor.key, 'r');
 });
 
-test('getShortcutDefinitions: rename-session does not have alwaysFires', () => {
+test('getShortcutDefinitions: rename-session has alwaysFires', () => {
   const defs = getShortcutDefinitions(true);
   const renameDef = defs.find((d) => d.id === 'rename-session');
-  assert.ok(!renameDef?.alwaysFires, 'rename-session should not fire when input is focused');
+  assert.ok(renameDef?.alwaysFires === true, 'rename-session should fire even when input is focused');
 });
 
 test('matchesShortcut: matches Ctrl+Cmd+Shift+R on Mac', () => {
@@ -269,20 +276,11 @@ test('getShortcutDefinitions: non-Mac display strings use Ctrl text', () => {
 // Focus suppression logic — verify via matchesShortcut + alwaysFires
 // ---------------------------------------------------------------------------
 
-test('focus suppression: non-alwaysFires shortcuts should be suppressible by checking alwaysFires flag', () => {
+test('focus suppression: every shortcut fires while a text input is focused', () => {
   const defs = getShortcutDefinitions(true);
-
-  // Simulate "focus is in an input" suppression: shortcuts without alwaysFires
-  // should be skipped. Only archive-session has alwaysFires.
   const inputFocused = true;
-
-  const newSessionDef = defs.find((d) => d.id === 'new-session')!;
-  const archiveDef = defs.find((d) => d.id === 'archive-session')!;
-
-  // Simulate: would this shortcut fire when inputFocused?
-  const wouldNewSessionFire = !inputFocused || Boolean(newSessionDef.alwaysFires);
-  const wouldArchiveFire = !inputFocused || Boolean(archiveDef.alwaysFires);
-
-  assert.equal(wouldNewSessionFire, false, 'new-session should be suppressed when input is focused');
-  assert.equal(wouldArchiveFire, true, 'archive-session should always fire');
+  for (const def of defs) {
+    const wouldFire = !inputFocused || Boolean(def.alwaysFires);
+    assert.equal(wouldFire, true, `${def.id} should fire even when input is focused`);
+  }
 });

@@ -140,6 +140,7 @@ export function getShortcutDefinitions(mac: boolean = isMac()): Array<{
       display: mac
         ? `${ctrl}${shift}${mod}T`
         : `Ctrl${sep}Shift${sep}Ctrl${sep}T`,
+      alwaysFires: true,
     },
     {
       id: 'archive-session',
@@ -167,6 +168,7 @@ export function getShortcutDefinitions(mac: boolean = isMac()): Array<{
       label: 'Open keyboard shortcuts',
       descriptor: { meta: true, key: '/' },
       display: mac ? `${mod}/` : `Ctrl${sep}/`,
+      alwaysFires: true,
     },
     {
       id: 'rename-session',
@@ -175,6 +177,7 @@ export function getShortcutDefinitions(mac: boolean = isMac()): Array<{
       display: mac
         ? `${ctrl}${shift}${mod}R`
         : `Ctrl${sep}Shift${sep}Ctrl${sep}R`,
+      alwaysFires: true,
     },
   ];
 }
