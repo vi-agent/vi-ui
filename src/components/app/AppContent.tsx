@@ -83,6 +83,7 @@ function AppContentInner() {
     handleNewSession,
     handleSessionSelect,
     handleProjectSelect,
+    handleSessionDelete,
   } = useProjectsState({
     sessionId,
     navigate,
@@ -107,14 +108,19 @@ function AppContentInner() {
     try {
       const response = await api.deleteSession(currentSessionId, false);
       if (response.ok) {
-        // Navigate away and let sidebar refresh pick up the change.
-        navigate('/');
+        // Optimistically remove from local state so the sidebar row disappears
+        // immediately. A silent refresh alone can't do this — the merge logic
+        // in useProjectsState would re-add the row from the previous state.
+        handleSessionDelete(currentSessionId);
+        if (sessionId === currentSessionId) {
+          navigate('/');
+        }
         void refreshProjectsSilently();
       }
     } catch (error) {
       console.error('[keyboard] Failed to archive session:', error);
     }
-  }, [navigate, refreshProjectsSilently, selectedSession?.id, sessionId]);
+  }, [handleSessionDelete, navigate, refreshProjectsSilently, selectedSession?.id, sessionId]);
 
   // Navigate to the prev/next sidebar item (wraps at ends).
   const handleNavigate = useCallback((direction: 'prev' | 'next') => {
