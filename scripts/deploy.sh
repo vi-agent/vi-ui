@@ -13,7 +13,9 @@ cd "$PROD"
 git pull --ff-only origin main
 
 echo "==> Installing dependencies..."
-npm ci
+# Force devDeps: prod has NODE_ENV=production which would otherwise skip
+# them, breaking the husky `prepare` hook and the vite/tsc build below.
+npm ci --include=dev
 
 echo "==> Building client + server..."
 npm run build
