@@ -133,7 +133,6 @@ export function useChatSessionState({
   const pendingScrollRestoreRef = useRef<ScrollRestoreState | null>(null);
   const pendingInitialScrollRef = useRef(true);
   const messagesOffsetRef = useRef(0);
-  const scrollPositionRef = useRef({ height: 0, top: 0 });
   const loadAllFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadAllOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoadedSessionKeyRef = useRef<string | null>(null);
@@ -411,15 +410,6 @@ export function useChatSessionState({
       if (didLoad) topLoadLockRef.current = true;
     }
   }, [hasMoreMessages, isNearBottom, loadOlderMessages]);
-
-  useLayoutEffect(() => {
-    if (!pendingScrollRestoreRef.current || !scrollContainerRef.current) return;
-    const { height, top } = pendingScrollRestoreRef.current;
-    const container = scrollContainerRef.current;
-    const newScrollHeight = container.scrollHeight;
-    container.scrollTop = top + Math.max(newScrollHeight - height, 0);
-    pendingScrollRestoreRef.current = null;
-  }, [chatMessages.length]);
 
   // Reset scroll/pagination state on session change
   useEffect(() => {
@@ -733,29 +723,30 @@ export function useChatSessionState({
     return chatMessages.slice(-visibleMessageCount);
   }, [chatMessages, visibleMessageCount]);
 
-  useEffect(() => {
+  // Consolidated scroll management. Runs synchronously after commit and
+  // before paint so restore-vs-autoscroll cannot race — the previous split
+  // (useLayoutEffect restore + useEffect setTimeout auto-scroll) let the
+  // 50ms auto-scroll fire after the restore, snapping the viewport back
+  // down and causing a visible flicker when the user scrolled up to load
+  // older messages.
+  useLayoutEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
-    scrollPositionRef.current = { height: container.scrollHeight, top: container.scrollTop };
-  });
-
-  useEffect(() => {
-    if (!scrollContainerRef.current || chatMessages.length === 0) return;
-    if (isLoadingMoreRef.current || isLoadingMoreMessages || pendingScrollRestoreRef.current) return;
+    if (!container || chatMessages.length === 0) return;
     if (searchScrollActiveRef.current) return;
 
-    if (!isUserScrolledUp) {
-      setTimeout(() => scrollToBottom(), 50);
+    if (pendingScrollRestoreRef.current) {
+      const { height, top } = pendingScrollRestoreRef.current;
+      container.scrollTop = top + Math.max(container.scrollHeight - height, 0);
+      pendingScrollRestoreRef.current = null;
       return;
     }
 
-    const container = scrollContainerRef.current;
-    const prevHeight = scrollPositionRef.current.height;
-    const prevTop = scrollPositionRef.current.top;
-    const newHeight = container.scrollHeight;
-    const heightDiff = newHeight - prevHeight;
-    if (heightDiff > 0 && prevTop > 0) container.scrollTop = prevTop + heightDiff;
-  }, [chatMessages.length, isLoadingMoreMessages, isUserScrolledUp, scrollToBottom]);
+    if (isLoadingMoreRef.current || isLoadingMoreMessages) return;
+
+    if (!isUserScrolledUp) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [chatMessages.length, isLoadingMoreMessages, isUserScrolledUp]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
