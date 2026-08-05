@@ -748,6 +748,31 @@ export function useChatSessionState({
     }
   }, [chatMessages.length, isLoadingMoreMessages, isUserScrolledUp]);
 
+  // Re-anchor to the bottom when the messages container shrinks (e.g. the
+  // composer textarea auto-grows on each keystroke and eats vertical space).
+  // The browser preserves scrollTop across the shrink, so without this the
+  // last visible message gets clipped by the delta of the shrink.
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    let prevHeight = container.clientHeight;
+    const observer = new ResizeObserver(() => {
+      const newHeight = container.clientHeight;
+      const delta = prevHeight - newHeight;
+      prevHeight = newHeight;
+      if (delta <= 0) return;
+      // Pre-shrink distance-from-bottom was (current - delta). If it was
+      // within 50px, the user was anchored — snap back to the bottom.
+      const distFromBottom = container.scrollHeight - container.scrollTop - newHeight;
+      if (distFromBottom - delta < 50) {
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
